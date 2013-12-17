@@ -17,6 +17,7 @@ Adafruit_NeoPixel strip = Adafruit_NeoPixel(60, 6, NEO_GRB + NEO_KHZ800);
 Adafruit_LSM303 lsm;
 
 // some fudgable constants
+#define ATTENTION_SPAN 10
 #define CLEAR_TIME 300
 #define COMBO_TRIGGER 2
 #define ACCEL_THRESHOLD 10
@@ -62,13 +63,13 @@ void loop()
   float x = lsm.accelData.x/SENSITIVITY;
   float y = lsm.accelData.y/SENSITIVITY;
   float z = lsm.accelData.z/SENSITIVITY;
-  motion_check(z);
+  motion_check(y);
   
   // engage pixels
   unsigned long now = millis();
   if (now >= bored) {
     // bottle is bored and will start rotating color
-    base_hue += .1;
+    base_hue += .2;
   }
   
   
@@ -91,7 +92,7 @@ void set_color(float hue, float sat, float value) {
 // cool visual triggered by shakes
 void shake_event() {
   // bottle is entertained
-  bored = millis() + 1000*30;
+  bored = millis() + 1000*ATTENTION_SPAN;
   base_hue += 15;
 }
 
