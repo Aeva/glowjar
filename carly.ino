@@ -22,6 +22,7 @@ Adafruit_LSM303 lsm;
 #define COMBO_TRIGGER 2
 #define ACCEL_THRESHOLD 10
 #define SENSITIVITY 100.0
+#define PHI 1.618033988749894848204586834
 
 
 // data for state tracking
@@ -93,7 +94,7 @@ void set_color(float hue, float sat, float value) {
 void shake_event() {
   // bottle is entertained
   bored = millis() + 1000*ATTENTION_SPAN;
-  base_hue += 15;
+  base_hue += 10*PHI;
 }
 
 
