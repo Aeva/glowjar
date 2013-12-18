@@ -32,9 +32,8 @@ unsigned long last_time = 0;
 int combo = 0;
 
 unsigned long bored = 0;  // fake timeout for when to do color rotation stuff
-float base_hue = 0; // 0.0 to 255.0
-
-
+float base_hue = 0; // 0.0 to 359.0 eg mod 360  
+float target_hue = base_hue;
 
 
 // setup event
@@ -72,10 +71,20 @@ void loop()
     // bottle is bored and will start rotating color
     base_hue += .2;
   }
+  /*
+  else {
+    // bottle is not bored, therefore...
+    float increment = PHI*3;
+    if (abs(target_hue-base_hue) < increment+1 || abs((target_hue+360)-base_hue) < increment+1) {
+      // close enough, snap to target
+      base_hue = target_hue;
+    }
+    base_hue += increment;
+  }
+  */
   
-  
-  base_hue = fmod(base_hue, 255);
-  set_color(base_hue/255, 1, 1);
+  base_hue = fmod(base_hue, 360);
+  set_color(base_hue/360, 1, 1);
   // pause for effect
   delay(10);
 }
@@ -93,7 +102,13 @@ void set_color(float hue, float sat, float value) {
 // cool visual triggered by shakes
 void shake_event() {
   // bottle is entertained
-  bored = millis() + 1000*ATTENTION_SPAN;
+  unsigned long now = millis();
+  if (bored < now) {
+    // this indicates a state change from bored to not-bored, so reset the target_hue.
+    target_hue = base_hue;
+  }  
+  bored = now + 1000*ATTENTION_SPAN;
+  //target_hue = base_hue + 9*PHI;
   base_hue += 10*PHI;
 }
 
