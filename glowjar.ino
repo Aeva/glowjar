@@ -32,25 +32,25 @@ Adafruit_NeoPixel strip = Adafruit_NeoPixel(SIZE, PIN, NEO_GRB + NEO_KHZ800);
 #define GSCALE 2
 
 
-
-
 // other state tracking
 bool i_am_error = true;
 byte hue = 255;
+unsigned long last_shake = 0;
 
 // pertaining to color rotation
-#define ERROR_SPEED 10 
-#define FAST_SPEED 1
-#define SLOW_SPEED 50
-byte transpired = 0;
-byte speed = SLOW_SPEED;
+#define ERROR_SPEED 10 // delay of color rotation when accel is disconnected
+#define FAST_SPEED 1   // time delay for fast color rotation
+#define SLOW_SPEED 50  // time delay for slow color rotation
+byte speed = SLOW_SPEED; // the current time delay for color rotation
+byte transpired = 0; // number of times loop() has been called since last color
 
 // pertaining to accelorometer / shake logic
-#define ACCEL_THRESHOLD 4
-#define ATTENTION_SPAN 255
-#define ATTENTION_STEP 5
-#define COMBO_INCREMENT 20
-#define COMBO_TRIGGER 40
+#define ACCEL_THRESHOLD 2  // how much acceleration can trigger a shake
+#define ATTENTION_STEP 5   // how much the color shift 'velocity' increments
+#define ATTENTION_SPAN 255 // maximum 'velocity'
+#define COMBO_MIN 1000  // minimum time between shakes to trigger
+#define COMBO_MAX 2000 // maximum time between shakes to trigger
+#define COMBO_TRIGGER 2
 float last_accel[3] = {0, 0, 0};
 float accel[3] = {0, 0, 0};
 bool shake_dir[3] = {true, true, true};
@@ -87,9 +87,9 @@ void loop() {
     }
     if (active == 0 && speed < SLOW_SPEED) {
       speed += (SLOW_SPEED - speed) / 2 + 1;
-    }
-    if (combo > 0) {
-      combo -=1;
+      if (combo > 0) {
+        combo -=1;
+      }
     }
     read_accel_data();
     motion_check();
@@ -105,6 +105,15 @@ void loop() {
 
 
 void motion_check() {
+  /*
+    Read the current acceleration data from every axis.  For a given
+    axis, if the direction of movement changed from the last time we
+    checked (and if the overall difference between those two
+    measurements is significant enough), and the overall time since
+    the last significant acceleration activity is long enough (so that
+    we catch shakes but not little taps), then call the 'shake event'
+    function.
+   */
   for (byte axis=0; axis<3; axis+=1) {
     if (abs(accel[axis]-last_accel[axis]) > ACCEL_THRESHOLD) {
       hue += 10;
@@ -113,15 +122,15 @@ void motion_check() {
 #endif
       bool ref_dir = true ? accel[axis] > last_accel[axis] : false;
       if (ref_dir != shake_dir[axis]) {
-        if (combo < COMBO_TRIGGER*2) {
-          combo += COMBO_INCREMENT;
-        }
         shake_dir[axis] = ref_dir;
-        if (combo >= COMBO_TRIGGER) {
-          if (active < ATTENTION_SPAN) {
-            active += ATTENTION_STEP;
-          }
-          speed = FAST_SPEED;
+        unsigned long now = millis();
+        if (now < last_shake) {
+          // in the odd event that the time counter overflowed, reset things
+          last_shake = now;
+        }
+        unsigned int dt = now - last_shake;
+        if (dt >= COMBO_MIN && dt <= COMBO_MAX) {
+          shake_event();
         }
       }
     }
@@ -131,12 +140,30 @@ void motion_check() {
   Serial.print(combo);
   Serial.print("\n");
 #endif 
+}
 
+
+void shake_event() {
+  /*
+    Increment the number of 'combos' recorded.  If the number is above
+    COMBO_TRIGGER, then bump the hue a bit and raise the activity
+    state slightly.
+   */
+  combo += 1;
+  if (combo >= COMBO_TRIGGER) {
+    hue += 3;
+    active += ATTENTION_STEP;
+  }
 }
 
 
 // 
 int read_accel_data() {
+  /*
+    Reads data from the accelerometer, convert it into floating point
+    values, then copies the previous acceleration data into
+    'last_accel', and store the new data into 'accel'.
+   */
   int accelCount[3];  // Stores the 12-bit signed value
   readAccelData(accelCount);  // Read the x/y/z adc values
 
@@ -165,6 +192,10 @@ int read_accel_data() {
 
 // set all pixels to the given color.  params 0 to 255
 void set_color(byte h) {
+  /*
+    Set all of the colors in the "NeoPixel" strip to have the given
+    hue.
+   */
   byte r;
   byte g;
   byte b;
