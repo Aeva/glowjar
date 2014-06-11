@@ -45,7 +45,7 @@ byte speed = SLOW_SPEED; // the current time delay for color rotation
 byte transpired = 0; // number of times loop() has been called since last color
 
 // pertaining to accelorometer / shake logic
-#define ACCEL_THRESHOLD 2  // how much acceleration can trigger a shake
+#define ACCEL_THRESHOLD .5  // how much acceleration can trigger a shake
 #define ATTENTION_STEP 5   // how much the color shift 'velocity' increments
 #define ATTENTION_SPAN 255 // maximum 'velocity'
 #define COMBO_MIN 1000  // minimum time between shakes to trigger
